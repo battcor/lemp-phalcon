@@ -69,5 +69,13 @@ RUN yum -y install php56u-memcached memcached
 
 CMD ["sh", "start.sh"]
 
+ADD default.conf /etc/nginx/conf.d/default.conf
+ADD index.php /var/www/html
+ADD test.php /var/www/html
+
+
+RUN service nginx start && service php-fpm start && \
+    curl -X GET http://127.0.0.1
+
 EXPOSE 80
 EXPOSE 3306
