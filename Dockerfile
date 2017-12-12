@@ -61,21 +61,27 @@ RUN service mysql start && \
         DELETE FROM mysql.db WHERE Db='test' OR Db='test\\_%'; \
         FLUSH PRIVILEGES;"
 
-ADD start.sh .
-
-ADD supervisor/supervisord.conf /etc/supervisord.conf
+RUN git clone -b 2.0.x https://github.com/phalcon/cphalcon.git cphalcon-2.0.x && \
+    cd cphalcon-2.0.x/build/ && \
+    ./install && \
+    echo 'extension=phalcon.so' > /etc/php.d/phalcon.ini
 
 RUN yum -y install php56u-memcached memcached
 
-CMD ["sh", "start.sh"]
-
-ADD default.conf /etc/nginx/conf.d/default.conf
-ADD index.php /var/www/html
-ADD test.php /var/www/html
-
-
-RUN service nginx start && service php-fpm start && \
-    curl -X GET http://127.0.0.1
+RUN yum -y install php56u-memcache
 
 EXPOSE 80
 EXPOSE 3306
+EXPOSE 11211
+
+RUN service mysql start && \
+    mysql --user=root -ptest123 -e " \
+        UPDATE mysql.user SET Password=PASSWORD('test123') WHERE User='root'; \
+        DELETE FROM mysql.user WHERE User=''; \
+        DELETE FROM mysql.user WHERE User='root' AND Host NOT IN ('localhost', '127.0.0.1', '::1'); \
+        GRANT ALL PRIVILEGES ON *.* TO 'root'@'%' IDENTIFIED BY 'test123'; \
+        DROP DATABASE IF EXISTS test; \
+        DELETE FROM mysql.db WHERE Db='test' OR Db='test\\_%'; \
+        FLUSH PRIVILEGES;"
+
+CMD service mysql start && service memcached start && service php-fpm start && nginx -g 'daemon off;' && bash
